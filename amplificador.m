@@ -45,10 +45,6 @@ figure;
 plot(lna_ckt,'Gmag','Ga','Gt','dB');
 figure;
 plot(lna_ckt,'Fmin','NF','dB')
-figure;
-hsm = smithplot;
-circle(lna_ckt,f0,'Stab','In','Stab','Out','Ga',8:1:11, 'NF',1.4:0.2:2.6,hsm);
-legend('Location','SouthEast')
 
 %% 2. Análise de Estabilidade e Plot dos Círculos de Operação
 fprintf('--- ANÁLISE INICIAL A %.1f GHz ---\n', f0/1e9);
@@ -65,8 +61,8 @@ end
 
 % Testando se pode ser tratado como unilateral
 U = abs(S11) * abs(S12) * abs(S21) * abs(S22) / ((1 - abs(S11)^2) * (1 - abs(S22)^2));
-ULB = 1 / (1 + U^2);
-UUB = 1 / (1 - U^2);
+ULB = 1 / (1 + U)^2;
+UUB = 1 / (1 - U)^2;
 fprintf('%.4f < Gt - Gtu < %.4f\n', 10*log10(ULB), 10*log10(UUB));
 
 % Objetivo: Figura de Ruído (NF) <= 2 dB com o maior ganho possível.
@@ -78,6 +74,9 @@ F_min = 10^(F_min_dB/10);
 N_param = (F_design - F_min) * abs(1 + Gamma_opt)^2 / (4 * Rn / Z0);
 Cf = Gamma_opt / (N_param + 1);
 Rf = (1 / (N_param + 1)) * sqrt(N_param * (N_param + 1 - abs(Gamma_opt)^2));
+fprintf('Circulo de ruido Cf = %.3f e Rf = %.3f\n', Cf, Rf);
+disp(Cf)
+disp(Rf)
 
 % Calcula os parâmetros do círculo de ganho
 x_values = 0:0.0001:(2*pi);
@@ -90,6 +89,9 @@ Gamma_s = Gamma_s_values(idx);
 gs = (1 - abs(Gamma_s)^2) / abs(1 - S11 * Gamma_s)^2 * (1 - abs(S11)^2);
 Cs = gs * conj(S11) / (1 - (1 - gs) * abs(S11)^2);
 Rs = sqrt(1 - gs) * (1 - abs(S11)^2) / (1 - (1 - gs) * abs(S11)^2);
+fprintf('Circulo de ganho Cs = %.3f e Rs = %.3f\n', Cs, Rs);
+disp(Cs)
+disp(Rs)
 
 % Calcula o Gamma_l necessário para casamento conjugado na saída
 Gamma_out = S22 + (S12*S21*Gamma_s)/(1-S11*Gamma_s);
@@ -110,12 +112,13 @@ Ga_design_dB = 10*log10(Ga_design_val);
 % Ganho do Transistor (G0) e Ganhos das Redes (unilateral)
 Gs_u = 10*log10((1 - abs(Gamma_s)^2)/abs(1 - S11*Gamma_s)^2);
 G0 = 10*log10(abs(S21)^2);
-Gl_u = 10*log10(1 / (1 - abs(S22)^2));
-GT_u = Gs_u + G0 + Gl_u;
+Gl = 10*log10((1 - abs(Gamma_l)^2) / abs(1 - S22 * Gamma_l)^2);
+GT_u = Gs_u + G0 + Gl;
 
 % Ganho de Transdução Bilateral (Exato)
+gamma_in = S11 + (S12 * S21 * Gamma_l) / (1 - S22 * Gamma_l);
 GT = 10*log10((abs(S21)^2 * (1-abs(Gamma_s)^2) * (1-abs(Gamma_l)^2)) / ...
-     (abs((1-S11*Gamma_s)*(1-S22*Gamma_l) - S12*S21*Gamma_l*Gamma_s)^2));
+     (abs(1 - Gamma_s * gamma_in)^2 * abs(1 - S22 * Gamma_l)^2));
 GTu = 10*log10((abs(S21)^2 * (1-abs(Gamma_s)^2) * (1-abs(Gamma_l)^2)) / ...
      (abs(1-S11*Gamma_s)^2 * abs(1-S22*Gamma_l)^2));
 
@@ -124,7 +127,7 @@ fprintf('Figura de Ruído Esperada: %.3f dB\n', NF_design_dB);
 fprintf('Ganho Disponível (Ga): %.3f dB\n', Ga_design_dB);
 fprintf('Ganho da Rede de Entrada (Gs, unilateral): %.3f dB\n', Gs_u);
 fprintf('Ganho do Transistor (G0): %.3f dB\n', G0);
-fprintf('Ganho da Rede de Saída (Gl, unilateral): %.3f dB\n', Gl_u);
+fprintf('Ganho da Rede de Saída: %.3f dB\n', Gl);
 fprintf('Ganho Total (GT, unilateral): %.3f dB\n', GT_u);
 fprintf('Ganho Total de Transdução (GT, bilateral exato): %.3f dB\n', GT);
 
